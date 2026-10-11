@@ -118,3 +118,17 @@ Não existem dependências externas em tempo de execução.
 A suíte em `tests/` cobre contratos, validação da CLI, DNS, TCP, HTTP/HTTPS,
 presenter, cores, resumo e códigos de saída. Operações de rede são simuladas
 com `unittest.mock`, evitando dependência de Internet.
+
+## Camada GUI em desenvolvimento
+
+O Gate GUI-G1 adiciona uma camada de apresentação separada em
+`monitorcheck.gui`, implementada somente com `tkinter` e `ttk`:
+
+- `gui/__main__.py`: entrypoint de `python -m monitorcheck.gui`;
+- `gui/app.py`: janela, formulário e áreas visuais de resultados;
+- `gui/__init__.py`: API pública mínima da camada.
+
+Essa camada não importa nem chama as verificações DNS, TCP ou HTTP/HTTPS. O
+botão de execução está desabilitado, e todos os painéis começam no estado
+“Nenhuma verificação foi executada.” A integração funcional pertence a gates
+posteriores da Etapa 2 e não altera a arquitetura homologada da CLI 1.0.0.

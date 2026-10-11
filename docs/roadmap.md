@@ -60,6 +60,21 @@ a DNS, TCP, HTTP/HTTPS e relatório no terminal.
 - [x] lógica de rede separada da apresentação;
 - [x] cobertura automatizada dos fluxos principais.
 
+## Etapa 2 — GUI local em desenvolvimento
+
+### GUI-G1 — Estrutura visual inicial
+
+- [x] criar o pacote separado `monitorcheck.gui`;
+- [x] adicionar o entrypoint `python -m monitorcheck.gui`;
+- [x] criar os campos de host, portas, URL e timeout;
+- [x] criar áreas separadas para DNS, TCP, HTTP/HTTPS e resumo;
+- [x] manter o botão de execução desabilitado;
+- [x] preservar integralmente o comportamento da CLI e dos checks;
+- [ ] integrar as verificações de rede à GUI em gate posterior.
+
+A interface gráfica ainda não está pronta para uso funcional. Neste gate ela é
+somente uma camada visual, sem execução de DNS, TCP ou HTTP/HTTPS.
+
 ## Evolução futura — fora da versão 1.0.0
 
 Os itens abaixo são possibilidades, não compromissos nem requisitos do MVP:

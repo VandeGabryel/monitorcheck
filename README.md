@@ -174,6 +174,25 @@ Detalhes adicionais estão em [docs/architecture.md](docs/architecture.md). O
 histórico dos gates e as possibilidades futuras estão em
 [docs/roadmap.md](docs/roadmap.md).
 
+## Interface gráfica em desenvolvimento
+
+A Etapa 2 iniciou a camada gráfica local com `tkinter` e `ttk`. No Gate GUI-G1,
+a janela contém os campos de entrada e seções visuais para DNS, TCP, HTTP/HTTPS
+e resumo, mas o botão de execução permanece desabilitado e nenhuma verificação
+de rede é chamada.
+
+A estrutura visual pode ser aberta manualmente com:
+
+```powershell
+python -m monitorcheck.gui
+```
+
+A instalação do Python precisa incluir suporte ao Tk. Em algumas distribuições
+Linux, esse suporte é fornecido por um pacote do próprio sistema operacional.
+
+A CLI 1.0.0 continua sendo a interface funcional homologada. A GUI ainda está
+em desenvolvimento e não deve ser considerada pronta para uso operacional.
+
 ## Limitações conhecidas
 
 - a resolução DNS usa o timeout do resolvedor do sistema operacional;
