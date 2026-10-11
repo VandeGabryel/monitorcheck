@@ -70,10 +70,25 @@ a DNS, TCP, HTTP/HTTPS e relatório no terminal.
 - [x] criar áreas separadas para DNS, TCP, HTTP/HTTPS e resumo;
 - [x] manter o botão de execução desabilitado;
 - [x] preservar integralmente o comportamento da CLI e dos checks;
-- [ ] integrar as verificações de rede à GUI em gate posterior.
+- [x] reservar a integração das verificações para um gate posterior.
 
-A interface gráfica ainda não está pronta para uso funcional. Neste gate ela é
-somente uma camada visual, sem execução de DNS, TCP ou HTTP/HTTPS.
+Nesse gate, a interface permaneceu somente visual, sem execução de rede.
+
+### GUI-G2 — Integração com o núcleo
+
+- [x] extrair validações para um módulo neutro e compartilhado;
+- [x] criar uma camada de orquestração independente de CLI e GUI;
+- [x] preservar argumentos, relatório e códigos de saída da CLI;
+- [x] validar os campos da GUI antes da execução;
+- [x] executar DNS e, opcionalmente, TCP e HTTP/HTTPS;
+- [x] realizar operações de rede fora da thread principal do Tkinter;
+- [x] impedir execuções simultâneas e indicar o estado em andamento;
+- [x] atualizar widgets somente pela thread principal;
+- [x] apresentar resultados e indicar verificações não solicitadas;
+- [x] cobrir validação e orquestração com testes sem Internet ou display.
+
+A integração funcional básica está concluída. Cores, refinamento visual e UX
+final permanecem reservados ao GUI-G3 e não fazem parte deste gate.
 
 ## Evolução futura — fora da versão 1.0.0
 

@@ -151,23 +151,19 @@ py -3 -m unittest discover -s tests -v
 ## Arquitetura resumida
 
 ```text
-CLI e validação
-      |
-      +--> resolução DNS
-      +--> testes TCP sequenciais
-      +--> requisição HTTP/HTTPS
-      |
-      v
-CheckResult
-      |
-      v
-presenter de terminal + resumo + código de saída
+CLI ──┐
+      ├── validação compartilhada ── runner ── checks
+GUI ──┘                                  │
+                                        └── CheckResult
 ```
 
-- `cli.py`: parsing, validação e orquestração;
+- `cli.py`: parsing dos argumentos e apresentação pela CLI;
+- `validation.py`: regras de validação compartilhadas pelas interfaces;
+- `runner.py`: orquestração neutra das verificações solicitadas;
 - `models.py`: contratos compartilhados;
 - `checks/`: lógica independente de DNS, TCP e HTTP/HTTPS;
 - `presenters/terminal.py`: consolidação, cores e resumo;
+- `gui/`: apresentação gráfica local em desenvolvimento;
 - `tests/`: testes unitários e de integração da CLI.
 
 Detalhes adicionais estão em [docs/architecture.md](docs/architecture.md). O
@@ -176,10 +172,11 @@ histórico dos gates e as possibilidades futuras estão em
 
 ## Interface gráfica em desenvolvimento
 
-A Etapa 2 iniciou a camada gráfica local com `tkinter` e `ttk`. No Gate GUI-G1,
-a janela contém os campos de entrada e seções visuais para DNS, TCP, HTTP/HTTPS
-e resumo, mas o botão de execução permanece desabilitado e nenhuma verificação
-de rede é chamada.
+A Etapa 2 adiciona uma camada gráfica local com `tkinter` e `ttk`. No Gate
+GUI-G2, a janela reutiliza as mesmas validações e verificações da CLI por meio
+de uma camada neutra de orquestração. As operações de rede são executadas em
+uma thread de trabalho para que a janela continue responsiva, e o resultado é
+entregue à thread principal antes da atualização dos widgets.
 
 A estrutura visual pode ser aberta manualmente com:
 
@@ -190,8 +187,9 @@ python -m monitorcheck.gui
 A instalação do Python precisa incluir suporte ao Tk. Em algumas distribuições
 Linux, esse suporte é fornecido por um pacote do próprio sistema operacional.
 
-A CLI 1.0.0 continua sendo a interface funcional homologada. A GUI ainda está
-em desenvolvimento e não deve ser considerada pronta para uso operacional.
+A CLI 1.0.0 continua homologada e com os mesmos argumentos, relatório e códigos
+de saída. A integração funcional básica da GUI está disponível, mas seu
+refinamento visual e de experiência permanece para gates posteriores.
 
 ## Limitações conhecidas
 

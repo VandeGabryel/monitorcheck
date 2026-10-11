@@ -15,6 +15,7 @@ from monitorcheck.cli import (
     parse_url,
 )
 from monitorcheck.models import CheckResult, CheckType, ResultStatus
+from monitorcheck.runner import RunResults
 
 
 class CliParsingTests(unittest.TestCase):
@@ -48,9 +49,9 @@ class CliParsingTests(unittest.TestCase):
 
 
 class CliDnsIntegrationTests(unittest.TestCase):
-    @patch("monitorcheck.cli.resolve_host")
-    def test_main_presents_dns_result_and_returns_success(self, resolver) -> None:
-        resolver.return_value = CheckResult(
+    @patch("monitorcheck.cli.run_checks")
+    def test_main_presents_dns_result_and_returns_success(self, runner) -> None:
+        dns_result = CheckResult(
             check_type=CheckType.DNS,
             target="example.com",
             status=ResultStatus.SUCCESS,
@@ -58,6 +59,7 @@ class CliDnsIntegrationTests(unittest.TestCase):
             duration_ms=2.5,
             details={"addresses": ("192.0.2.1",)},
         )
+        runner.return_value = RunResults(dns_result=dns_result)
         output = io.StringIO()
 
         with redirect_stdout(output):
@@ -68,17 +70,17 @@ class CliDnsIntegrationTests(unittest.TestCase):
         self.assertIn("Status: [SUCCESS]", output.getvalue())
         self.assertIn("192.0.2.1", output.getvalue())
         self.assertIn("Resultado geral: [SUCCESS]", output.getvalue())
-        resolver.assert_called_once_with("example.com")
+        runner.assert_called_once_with("example.com", (), None, 3.0)
 
-    @patch("monitorcheck.cli.resolve_host")
-    def test_main_returns_failure_for_dns_error(self, resolver) -> None:
-        resolver.return_value = CheckResult(
+    @patch("monitorcheck.cli.run_checks")
+    def test_main_returns_failure_for_dns_error(self, runner) -> None:
+        runner.return_value = RunResults(dns_result=CheckResult(
             check_type=CheckType.DNS,
             target="missing.invalid",
             status=ResultStatus.ERROR,
             message="Não foi possível resolver o host.",
             duration_ms=1.0,
-        )
+        ))
 
         with redirect_stdout(io.StringIO()):
             exit_code = main(["missing.invalid"])
@@ -87,12 +89,11 @@ class CliDnsIntegrationTests(unittest.TestCase):
 
 
 class CliTcpIntegrationTests(unittest.TestCase):
-    @patch("monitorcheck.cli.check_tcp_ports")
-    @patch("monitorcheck.cli.resolve_host")
+    @patch("monitorcheck.cli.run_checks")
     def test_main_checks_explicit_ports_with_configured_timeout(
-        self, resolver, tcp_checker
+        self, runner
     ) -> None:
-        resolver.return_value = CheckResult(
+        dns_result = CheckResult(
             CheckType.DNS,
             "localhost",
             ResultStatus.SUCCESS,
@@ -100,7 +101,7 @@ class CliTcpIntegrationTests(unittest.TestCase):
             1.0,
             {"addresses": ("127.0.0.1",)},
         )
-        tcp_checker.return_value = (
+        tcp_results = (
             CheckResult(
                 CheckType.TCP,
                 "localhost:8000",
@@ -118,6 +119,10 @@ class CliTcpIntegrationTests(unittest.TestCase):
                 {"port": 8001, "outcome": "refused"},
             ),
         )
+        runner.return_value = RunResults(
+            dns_result=dns_result,
+            tcp_results=tcp_results,
+        )
         output = io.StringIO()
 
         with redirect_stdout(output):
@@ -129,16 +134,15 @@ class CliTcpIntegrationTests(unittest.TestCase):
         self.assertIn("Porta 8000 [SUCCESS]", output.getvalue())
         self.assertIn("Porta 8001 [ERROR]", output.getvalue())
         self.assertIn("Falhas: 1", output.getvalue())
-        tcp_checker.assert_called_once_with("localhost", (8000, 8001), 0.5)
+        runner.assert_called_once_with("localhost", (8000, 8001), None, 0.5)
 
 
 class CliHttpIntegrationTests(unittest.TestCase):
-    @patch("monitorcheck.cli.check_http")
-    @patch("monitorcheck.cli.resolve_host")
+    @patch("monitorcheck.cli.run_checks")
     def test_main_checks_explicit_url_with_configured_timeout(
-        self, resolver, http_checker
+        self, runner
     ) -> None:
-        resolver.return_value = CheckResult(
+        dns_result = CheckResult(
             CheckType.DNS,
             "localhost",
             ResultStatus.SUCCESS,
@@ -146,7 +150,7 @@ class CliHttpIntegrationTests(unittest.TestCase):
             1.0,
             {"addresses": ("127.0.0.1",)},
         )
-        http_checker.return_value = CheckResult(
+        http_result = CheckResult(
             CheckType.HTTP,
             "http://localhost:8000/start",
             ResultStatus.WARNING,
@@ -158,6 +162,10 @@ class CliHttpIntegrationTests(unittest.TestCase):
                 "status_code": None,
                 "outcome": "response",
             },
+        )
+        runner.return_value = RunResults(
+            dns_result=dns_result,
+            http_result=http_result,
         )
         output = io.StringIO()
 
@@ -177,19 +185,21 @@ class CliHttpIntegrationTests(unittest.TestCase):
         self.assertIn("Status: [WARNING]", output.getvalue())
         self.assertIn("Resultado geral: [WARNING]", output.getvalue())
         self.assertIn("URL final: http://localhost:8000/final", output.getvalue())
-        http_checker.assert_called_once_with("http://localhost:8000/start", 0.75)
+        runner.assert_called_once_with(
+            "localhost", (), "http://localhost:8000/start", 0.75
+        )
 
     @patch("monitorcheck.cli.supports_color", return_value=True)
-    @patch("monitorcheck.cli.resolve_host")
-    def test_no_color_never_emits_ansi(self, resolver, _supports_color) -> None:
-        resolver.return_value = CheckResult(
+    @patch("monitorcheck.cli.run_checks")
+    def test_no_color_never_emits_ansi(self, runner, _supports_color) -> None:
+        runner.return_value = RunResults(dns_result=CheckResult(
             CheckType.DNS,
             "localhost",
             ResultStatus.SUCCESS,
             "Resolvido.",
             1.0,
             {"addresses": ("127.0.0.1",)},
-        )
+        ))
         output = io.StringIO()
 
         with redirect_stdout(output):

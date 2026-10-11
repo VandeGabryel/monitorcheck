@@ -15,19 +15,32 @@ que a orquestração e o relatório permaneçam separados.
 - `monitorcheck.__main__` permite `python -m monitorcheck`;
 - o script `monitorcheck` aponta para `monitorcheck.cli:main`.
 
-### CLI e validação
+### Interfaces e validação
 
-`cli.py` usa `argparse` e concentra:
+`validation.py` concentra as regras sintáticas de host, portas, URL e timeout,
+sem depender de `argparse` ou de widgets. A CLI adapta erros de validação para
+`argparse.ArgumentTypeError`; a GUI apresenta os mesmos erros em uma caixa de
+diálogo.
+
+`cli.py` mantém:
 
 - parsing de host, portas, URL, timeout e `--no-color`;
-- validação puramente sintática das entradas;
 - criação de `CliConfig`;
-- execução sequencial das verificações solicitadas;
 - envio dos resultados ao presenter;
 - definição do código de saída.
 
 Erros de entrada seguem o comportamento controlado do `argparse`, com mensagem
 de uso e código `2`, sem traceback.
+
+`gui/app.py` mantém os widgets e a apresentação gráfica. A rede é executada em
+uma `threading.Thread`; o worker publica o desfecho em uma `queue.Queue`, e a
+thread principal consulta a fila com `after()` antes de atualizar os widgets.
+
+### Orquestração compartilhada
+
+`runner.py` recebe entradas já validadas, sempre executa DNS e condiciona TCP e
+HTTP às opções recebidas. Ele retorna `RunResults`, que agrupa os `CheckResult`
+sem imprimir, conhecer widgets ou depender de uma interface específica.
 
 ### Contratos
 
@@ -77,23 +90,16 @@ de uso e código `2`, sem traceback.
 ## Fluxo de execução
 
 ```text
-argumentos
-   |
-   v
-parse_args -> CliConfig
-   |
+CLI/GUI -> validação -> runner
+                         |
    +--> resolve_host(host)
    +--> check_tcp_ports(host, ports, timeout), se solicitado
    +--> check_http(url, timeout), se solicitado
-   |
-   v
-coleção de CheckResult
-   |
-   v
-format_report
-   |
-   +--> relatório no stdout
-   +--> resumo para código de saída
+                         |
+                         v
+                    RunResults
+                      /     \
+        presenter terminal   apresentação GUI
 ```
 
 A execução é intencionalmente sequencial. DNS é sempre executado; TCP e HTTP
@@ -121,14 +127,16 @@ com `unittest.mock`, evitando dependência de Internet.
 
 ## Camada GUI em desenvolvimento
 
-O Gate GUI-G1 adiciona uma camada de apresentação separada em
+Os Gates GUI-G1 e GUI-G2 adicionam uma camada de apresentação separada em
 `monitorcheck.gui`, implementada somente com `tkinter` e `ttk`:
 
 - `gui/__main__.py`: entrypoint de `python -m monitorcheck.gui`;
 - `gui/app.py`: janela, formulário e áreas visuais de resultados;
 - `gui/__init__.py`: API pública mínima da camada.
 
-Essa camada não importa nem chama as verificações DNS, TCP ou HTTP/HTTPS. O
-botão de execução está desabilitado, e todos os painéis começam no estado
-“Nenhuma verificação foi executada.” A integração funcional pertence a gates
-posteriores da Etapa 2 e não altera a arquitetura homologada da CLI 1.0.0.
+O botão inicia a orquestração compartilhada fora da thread principal, permanece
+desabilitado durante a execução e volta a ser habilitado ao final. Os painéis
+começam no estado “Nenhuma verificação foi executada.” TCP e HTTP não
+solicitados são identificados explicitamente, sem serem contabilizados como
+falha. A integração não altera os checks nem a arquitetura pública da CLI
+1.0.0; refinamentos visuais pertencem ao GUI-G3.
