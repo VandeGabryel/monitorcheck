@@ -1,120 +1,175 @@
 # Arquitetura do MonitorCheck
 
-Este documento descreve a arquitetura implementada na versão 1.0.0.
+Este documento descreve a arquitetura implementada no estado atual do projeto.
 
-## Princípio
+## Visão geral
 
-A lógica de conectividade é independente da CLI e da apresentação. As
-verificações não imprimem no terminal: elas retornam `CheckResult`, permitindo
-que a orquestração e o relatório permaneçam separados.
+```text
+CLI ─┐
+     ├─> validation.py
+GUI ─┘
+         |
+         v
+      runner.py
+         |
+         +--> DNS
+         +--> TCP
+         +--> HTTP/HTTPS
+         |
+         v
+      CheckResult
+```
+
+CLI e GUI são camadas de apresentação independentes. Ambas validam entradas
+pelas mesmas regras e enviam dados já validados ao runner. O núcleo não imprime
+resultados e não conhece argumentos de linha de comando nem widgets.
 
 ## Componentes
 
 ### Entrypoints
 
-- `monitorcheck.__main__` permite `python -m monitorcheck`;
-- o script `monitorcheck` aponta para `monitorcheck.cli:main`.
+- `monitorcheck.__main__` executa a CLI com `python -m monitorcheck`;
+- o script `monitorcheck` aponta para `monitorcheck.cli:main`;
+- `monitorcheck.gui.__main__` executa a GUI com `python -m monitorcheck.gui`.
 
-### CLI e validação
+### Validação compartilhada
 
-`cli.py` usa `argparse` e concentra:
+`validation.py` valida sintaticamente:
 
-- parsing de host, portas, URL, timeout e `--no-color`;
-- validação puramente sintática das entradas;
-- criação de `CliConfig`;
-- execução sequencial das verificações solicitadas;
-- envio dos resultados ao presenter;
-- definição do código de saída.
+- host ou endereço IP;
+- lista explícita de portas TCP;
+- URL HTTP/HTTPS;
+- timeout positivo e finito.
 
-Erros de entrada seguem o comportamento controlado do `argparse`, com mensagem
-de uso e código `2`, sem traceback.
+O módulo não consulta a rede e não depende de `argparse` ou Tkinter. Erros usam
+`ValidationError`. A CLI os adapta para `argparse.ArgumentTypeError`; a GUI os
+apresenta em um `messagebox` antes de iniciar qualquer verificação.
+
+### Orquestração
+
+`runner.py` recebe host, portas opcionais, URL opcional e timeout já validados.
+Ele:
+
+1. sempre executa a resolução DNS;
+2. executa TCP somente quando existem portas;
+3. executa HTTP/HTTPS somente quando existe URL;
+4. retorna `RunResults`, sem imprimir ou conhecer a interface chamadora.
+
+A execução dentro do runner é sequencial. `RunResults.all_results` reúne apenas
+as verificações efetivamente executadas.
 
 ### Contratos
 
-`models.py` define:
+`models.py` define os contratos usados por checks e interfaces:
 
 - `CheckType`: `DNS`, `TCP` e `HTTP`;
 - `ResultStatus`: `SUCCESS`, `WARNING`, `ERROR`, `INFO` e `SKIPPED`;
 - `CheckResult`: tipo, alvo, status, mensagem, duração e detalhes.
 
-`CheckResult` possui atributos congelados e não depende de terminal ou rede.
+`CheckResult` é congelado e não depende de rede, terminal ou Tkinter.
 
-### Verificações
+### Verificações de rede
 
-`checks/dns.py`:
+`checks/dns.py` usa `socket.getaddrinfo`, considera IPv4 e IPv6, remove
+duplicatas e converte falhas do resolvedor em `CheckResult`.
 
-- usa `socket.getaddrinfo` com IPv4 e IPv6;
-- remove duplicatas e ordena IPv4 antes de IPv6;
-- converte falhas de resolução em `CheckResult`.
+`checks/tcp.py` usa `socket.create_connection`, aplica o timeout por porta e
+retorna um resultado independente para sucesso, recusa, timeout ou erro de
+socket.
 
-`checks/tcp.py`:
+`checks/http.py` usa `urllib.request` para GET, preserva a validação TLS padrão
+e registra URL solicitada, URL final, código HTTP e duração. Erros HTTP, de rede,
+timeout e TLS são transformados em resultados controlados.
 
-- testa sequencialmente somente as portas informadas;
-- usa `socket.create_connection` com timeout por porta;
-- fecha conexões bem-sucedidas imediatamente;
-- distingue sucesso, recusa, timeout e outros erros de socket;
-- retorna um `CheckResult` por porta.
+Nenhum check imprime diretamente ou importa código das interfaces.
 
-`checks/http.py`:
+## CLI
 
-- cria uma requisição GET com `urllib.request`;
-- preserva a validação TLS padrão;
-- não lê nem armazena o corpo;
-- registra URL solicitada, URL final, código e duração;
-- distingue resposta, erro HTTP, timeout, erro de rede e erro TLS.
+`cli.py` é responsável por:
 
-### Apresentação
+- definir e interpretar os argumentos com `argparse`;
+- adaptar as validações compartilhadas ao comportamento da CLI;
+- criar `CliConfig`;
+- chamar o runner;
+- enviar os resultados ao presenter de terminal;
+- retornar o código de saída.
 
-`presenters/terminal.py`:
+`presenters/terminal.py` formata as seções, detalhes, legenda e resumo. As cores
+ANSI são opcionais e nunca substituem os rótulos textuais. Uma execução retorna
+`1` quando existe `ERROR`, `0` nos demais resultados válidos e `2` para entrada
+inválida detectada pelo parser.
 
-- valida o tipo de resultado esperado por seção;
-- apresenta detalhes específicos de DNS, TCP e HTTP/HTTPS;
-- calcula totais com `ReportSummary`;
-- determina o resultado geral;
-- aplica cores ANSI opcionais sem remover os rótulos textuais;
-- desativa cores em saída não interativa, `TERM=dumb` ou `NO_COLOR`.
+## GUI
 
-## Fluxo de execução
+`gui/app.py` contém somente responsabilidades da apresentação gráfica:
+
+- formulário e validação antes da execução;
+- painéis DNS e HTTP/HTTPS;
+- tabela com uma linha por resultado TCP;
+- resumo e estados textuais;
+- bloqueio e restauração dos controles durante a execução;
+- temas Claro e Escuro;
+- redimensionamento e estilos `ttk`.
+
+### Execução assíncrona
+
+Tkinter deve ser atualizado pela thread que mantém seu loop de eventos. Para
+evitar congelamento:
+
+1. a thread principal valida os campos e desabilita controles conflitantes;
+2. uma `threading.Thread` daemon chama `run_checks`;
+3. o worker publica sucesso ou erro em uma `queue.Queue`;
+4. a thread principal consulta a fila periodicamente com `after()`;
+5. somente a thread principal atualiza widgets e restaura controles.
+
+Falhas de rede esperadas já chegam como `CheckResult`. Uma proteção adicional
+na fronteira da GUI apresenta erros inesperados sem derrubar a janela.
+
+### Temas
+
+Os temas `dark` e `light` são paletas declarativas aplicadas com `ttk.Style`
+sobre o tema-base `clam`, quando disponível. A troca de tema reconfigura estilos
+e tags da tabela existente; não recria widgets, não altera resultados e não
+interfere na thread ou na fila.
+
+As cores são complementares. Todos os estados continuam identificados por
+texto. O tema inicial é Escuro e a escolha não é persistida.
+
+## Separação entre lógica e apresentação
 
 ```text
-argumentos
-   |
-   v
-parse_args -> CliConfig
-   |
-   +--> resolve_host(host)
-   +--> check_tcp_ports(host, ports, timeout), se solicitado
-   +--> check_http(url, timeout), se solicitado
-   |
-   v
-coleção de CheckResult
-   |
-   v
-format_report
-   |
-   +--> relatório no stdout
-   +--> resumo para código de saída
+entrada -> validation -> runner -> checks -> CheckResult
+                                        |
+                    +-------------------+-------------------+
+                    |                                       |
+                    v                                       v
+            presenter de terminal                    apresentação GUI
 ```
 
-A execução é intencionalmente sequencial. DNS é sempre executado; TCP e HTTP
-são condicionais aos argumentos `--ports` e `--url`.
+Essa separação permite testar validação, orquestração, rede e apresentação sem
+misturar regras de interface. A GUI não importa a CLI, e os checks não importam
+nenhuma apresentação.
 
 ## Tratamento de falhas
 
-Falhas esperadas de rede são representadas por `ResultStatus.ERROR` e não
-escapam como traceback. Um aviso altera o resultado geral para `WARNING`, mas
-somente a presença de `ERROR` produz código de saída `1`.
+Falhas esperadas são representadas por `ResultStatus.ERROR`, sem traceback para
+o usuário. `WARNING` afeta o resultado geral, mas não é falha para o código de
+saída da CLI. Checks opcionais ausentes não são executados; na GUI aparecem como
+`SKIPPED`/não solicitados.
 
-## Biblioteca padrão utilizada
+## Biblioteca padrão e dependências
 
-- `argparse`, `dataclasses`, `enum`, `typing`;
-- `socket`, `ssl`, `urllib.request`, `urllib.error`;
+O código em tempo de execução utiliza apenas a biblioteca padrão, incluindo:
+
+- `argparse`, `dataclasses`, `enum` e `typing`;
+- `socket`, `ssl`, `urllib.request` e `urllib.error`;
+- `threading`, `queue`, `tkinter` e `ttk`;
 - `time`, `ipaddress`, `re`, `math`, `sys` e `os`.
 
-Não existem dependências externas em tempo de execução.
+Não existem dependências externas declaradas em tempo de execução.
 
 ## Testes
 
-A suíte em `tests/` cobre contratos, validação da CLI, DNS, TCP, HTTP/HTTPS,
-presenter, cores, resumo e códigos de saída. Operações de rede são simuladas
-com `unittest.mock`, evitando dependência de Internet.
+A suíte cobre contratos, validação, runner, DNS, TCP, HTTP/HTTPS, relatório,
+códigos de saída e lógica de apresentação da GUI. Rede e GUI são testadas com
+mocks ou funções puras, sem exigir Internet ou display gráfico real.
