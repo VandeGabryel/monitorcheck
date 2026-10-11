@@ -1,0 +1,2 @@
+"""Testes automatizados do MonitorCheck."""
+
