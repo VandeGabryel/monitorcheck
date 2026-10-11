@@ -1,73 +1,120 @@
-# Arquitetura planejada
+# Arquitetura do MonitorCheck
 
-## Princípio principal
+Este documento descreve a arquitetura implementada na versão 1.0.0.
 
-A lógica das verificações não deve depender da interface de linha de comando
-nem da forma usada para exibir os resultados. Essa separação permitirá que uma
-interface futura reutilize o mesmo núcleo.
+## Princípio
 
-## Camadas
+A lógica de conectividade é independente da CLI e da apresentação. As
+verificações não imprimem no terminal: elas retornam `CheckResult`, permitindo
+que a orquestração e o relatório permaneçam separados.
 
-### Entrada
+## Componentes
 
-`cli.py` será responsável por interpretar argumentos, validar a entrada e
-orquestrar as verificações solicitadas.
+### Entrypoints
+
+- `monitorcheck.__main__` permite `python -m monitorcheck`;
+- o script `monitorcheck` aponta para `monitorcheck.cli:main`.
+
+### CLI e validação
+
+`cli.py` usa `argparse` e concentra:
+
+- parsing de host, portas, URL, timeout e `--no-color`;
+- validação puramente sintática das entradas;
+- criação de `CliConfig`;
+- execução sequencial das verificações solicitadas;
+- envio dos resultados ao presenter;
+- definição do código de saída.
+
+Erros de entrada seguem o comportamento controlado do `argparse`, com mensagem
+de uso e código `2`, sem traceback.
+
+### Contratos
+
+`models.py` define:
+
+- `CheckType`: `DNS`, `TCP` e `HTTP`;
+- `ResultStatus`: `SUCCESS`, `WARNING`, `ERROR`, `INFO` e `SKIPPED`;
+- `CheckResult`: tipo, alvo, status, mensagem, duração e detalhes.
+
+`CheckResult` possui atributos congelados e não depende de terminal ou rede.
 
 ### Verificações
 
-O pacote `checks` conterá funções independentes para DNS, TCP e HTTP/HTTPS.
-Elas deverão retornar resultados estruturados e não imprimir diretamente no
-terminal.
+`checks/dns.py`:
 
-### Resultados
+- usa `socket.getaddrinfo` com IPv4 e IPv6;
+- remove duplicatas e ordena IPv4 antes de IPv6;
+- converte falhas de resolução em `CheckResult`.
 
-`models.py` concentrará os tipos compartilhados. O contrato deverá representar,
-no mínimo:
+`checks/tcp.py`:
 
-- tipo e alvo da verificação;
-- estado (`SUCCESS`, `WARNING`, `ERROR`, `INFO` ou `SKIPPED`);
-- duração;
-- mensagem curta;
-- detalhes específicos opcionais.
+- testa sequencialmente somente as portas informadas;
+- usa `socket.create_connection` com timeout por porta;
+- fecha conexões bem-sucedidas imediatamente;
+- distingue sucesso, recusa, timeout e outros erros de socket;
+- retorna um `CheckResult` por porta.
+
+`checks/http.py`:
+
+- cria uma requisição GET com `urllib.request`;
+- preserva a validação TLS padrão;
+- não lê nem armazena o corpo;
+- registra URL solicitada, URL final, código e duração;
+- distingue resposta, erro HTTP, timeout, erro de rede e erro TLS.
 
 ### Apresentação
 
-`presenters/terminal.py` converterá resultados em texto. As cores ANSI serão
-opcionais, acompanhadas por legenda, e nunca serão a única indicação do estado.
+`presenters/terminal.py`:
 
-## Fluxo previsto
+- valida o tipo de resultado esperado por seção;
+- apresenta detalhes específicos de DNS, TCP e HTTP/HTTPS;
+- calcula totais com `ReportSummary`;
+- determina o resultado geral;
+- aplica cores ANSI opcionais sem remover os rótulos textuais;
+- desativa cores em saída não interativa, `TERM=dumb` ou `NO_COLOR`.
+
+## Fluxo de execução
 
 ```text
-argumentos da CLI
-      |
-      v
-validação e orquestração
-      |
-      +--> DNS
-      +--> TCP
-      +--> HTTP/HTTPS
-      |
-      v
-resultados estruturados
-      |
-      v
-relatório no terminal + código de saída
+argumentos
+   |
+   v
+parse_args -> CliConfig
+   |
+   +--> resolve_host(host)
+   +--> check_tcp_ports(host, ports, timeout), se solicitado
+   +--> check_http(url, timeout), se solicitado
+   |
+   v
+coleção de CheckResult
+   |
+   v
+format_report
+   |
+   +--> relatório no stdout
+   +--> resumo para código de saída
 ```
 
-## Dependências
+A execução é intencionalmente sequencial. DNS é sempre executado; TCP e HTTP
+são condicionais aos argumentos `--ports` e `--url`.
 
-A Etapa 1 priorizará os seguintes módulos da biblioteca padrão:
+## Tratamento de falhas
 
-- `argparse` para a CLI;
-- `socket` para DNS e TCP;
-- `urllib.request` e `urllib.error` para HTTP/HTTPS;
-- `ssl` para erros e configuração TLS;
-- `time` para medição de duração;
-- `dataclasses` e `enum` para os resultados.
+Falhas esperadas de rede são representadas por `ResultStatus.ERROR` e não
+escapam como traceback. Um aviso altera o resultado geral para `WARNING`, mas
+somente a presença de `ERROR` produz código de saída `1`.
 
-## Extensão futura
+## Biblioteca padrão utilizada
 
-Uma possível interface web deverá consumir os mesmos serviços e modelos. A
-tecnologia dessa interface será escolhida apenas após a conclusão da Etapa 1.
-Não há pacote `web` nem dependência web nesta estrutura inicial.
+- `argparse`, `dataclasses`, `enum`, `typing`;
+- `socket`, `ssl`, `urllib.request`, `urllib.error`;
+- `time`, `ipaddress`, `re`, `math`, `sys` e `os`.
 
+Não existem dependências externas em tempo de execução.
+
+## Testes
+
+A suíte em `tests/` cobre contratos, validação da CLI, DNS, TCP, HTTP/HTTPS,
+presenter, cores, resumo e códigos de saída. Operações de rede são simuladas
+com `unittest.mock`, evitando dependência de Internet.

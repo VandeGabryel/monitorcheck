@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import sys
 from dataclasses import dataclass
 from typing import Sequence, TextIO
@@ -69,7 +70,11 @@ def supports_color(stream: TextIO | None = None) -> bool:
     """Indica se o fluxo de saída se apresenta como um terminal interativo."""
 
     output = stream if stream is not None else sys.stdout
-    return bool(getattr(output, "isatty", lambda: False)())
+    if not getattr(output, "isatty", lambda: False)():
+        return False
+    if "NO_COLOR" in os.environ:
+        return False
+    return os.environ.get("TERM", "").lower() != "dumb"
 
 
 def _status_label(status: ResultStatus, use_color: bool) -> str:

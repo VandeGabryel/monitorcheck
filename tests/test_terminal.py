@@ -1,9 +1,15 @@
 """Testes do relatório consolidado de terminal."""
 
+import os
 import unittest
+from unittest.mock import MagicMock, patch
 
 from monitorcheck.models import CheckResult, CheckType, ResultStatus
-from monitorcheck.presenters.terminal import format_report, summarize_results
+from monitorcheck.presenters.terminal import (
+    format_report,
+    summarize_results,
+    supports_color,
+)
 
 
 def _dns_result() -> CheckResult:
@@ -11,7 +17,7 @@ def _dns_result() -> CheckResult:
         CheckType.DNS,
         "example.test",
         ResultStatus.SUCCESS,
-        "2 endereço(s) encontrado(s).",
+        "2 endereços encontrados.",
         1.25,
         {"addresses": ("192.0.2.1", "2001:db8::1")},
     )
@@ -116,6 +122,21 @@ class TerminalReportTests(unittest.TestCase):
         self.assertNotIn("\nTCP\n", report)
         self.assertNotIn("\nHTTP/HTTPS\n", report)
         self.assertIn("Total de verificações: 1", report)
+
+    def test_color_detection_respects_terminal_and_environment(self) -> None:
+        terminal = MagicMock()
+        terminal.isatty.return_value = True
+
+        with patch.dict(os.environ, {}, clear=True):
+            self.assertTrue(supports_color(terminal))
+        with patch.dict(os.environ, {"TERM": "dumb"}, clear=True):
+            self.assertFalse(supports_color(terminal))
+        with patch.dict(os.environ, {"NO_COLOR": "1"}, clear=True):
+            self.assertFalse(supports_color(terminal))
+
+        terminal.isatty.return_value = False
+        with patch.dict(os.environ, {}, clear=True):
+            self.assertFalse(supports_color(terminal))
 
 
 if __name__ == "__main__":

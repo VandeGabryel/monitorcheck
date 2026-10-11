@@ -1,88 +1,85 @@
-# Roadmap
+# Roadmap do MonitorCheck
 
-## Etapa 1 — MVP CLI
+## MVP 1.0.0 — concluído
 
-### 1. Contratos e CLI
+Os seis gates da Etapa 1 foram concluídos. O escopo entregue permanece limitado
+a DNS, TCP, HTTP/HTTPS e relatório no terminal.
 
-- [x] definir os modelos de resultado e estados;
+### MC-G3.1 — Contratos e CLI
+
+- [x] definir modelos de resultado e estados;
 - [x] definir argumentos posicionais e opcionais;
 - [x] validar host, portas, URL e timeout;
-- [x] impedir que erros esperados exibam traceback ao usuário.
+- [x] apresentar erros de entrada sem traceback.
 
-### 2. Resolução DNS
+### MC-G3.2 — Resolução DNS
 
 - [x] resolver IPv4 e IPv6 com `socket`;
-- [x] remover endereços duplicados;
+- [x] remover endereços duplicados em ordem determinística;
 - [x] tratar host inexistente e falhas do resolvedor;
-- [x] registrar duração e mensagem objetiva.
+- [x] registrar duração e mensagem.
 
-Critério de conclusão: host válido produz uma lista de endereços e host inválido
-produz um resultado de erro controlado.
+### MC-G3.3 — Testes TCP
 
-### 3. Testes TCP
+- [x] testar somente portas explícitas;
+- [x] aplicar timeout por porta;
+- [x] distinguir sucesso, recusa, timeout e erro de socket;
+- [x] manter resultados independentes e execução sequencial.
 
-- [x] testar somente portas informadas pelo usuário;
-- [x] aplicar timeout por tentativa;
-- [x] distinguir porta aberta, conexão recusada, timeout e erro;
-- [x] validar o intervalo de portas de 1 a 65535.
+### MC-G3.4 — HTTP/HTTPS
 
-Critério de conclusão: cada porta gera um resultado independente sem bloquear a
-execução indefinidamente.
-
-### 4. Testes HTTP/HTTPS
-
-- [x] aceitar URL completa com esquema `http` ou `https`;
-- [x] executar uma requisição `GET`;
+- [x] aceitar URL HTTP ou HTTPS validada;
+- [x] executar GET com a biblioteca padrão;
 - [x] registrar código, URL final e duração;
-- [x] tratar erros HTTP, conexão, timeout e TLS.
+- [x] tratar erro HTTP, conexão, timeout e TLS;
+- [x] preservar a validação TLS padrão.
 
-Critério de conclusão: respostas e falhas comuns aparecem como resultados
-controlados, sem traceback.
+### MC-G3.5 — Relatório no terminal
 
-### 5. Relatório no terminal
+- [x] consolidar seções DNS, TCP e HTTP/HTTPS;
+- [x] apresentar estado, mensagem, duração e detalhes;
+- [x] calcular resumo e resultado geral;
+- [x] adicionar cores opcionais e legenda textual;
+- [x] implementar `--no-color` e detecção de saída sem ANSI;
+- [x] documentar códigos de saída.
 
-- [x] exibir seções para DNS, TCP e HTTP;
-- [x] apresentar estado, duração, mensagem e resumo final;
-- [x] adicionar cores opcionais e uma legenda;
-- [x] oferecer `--no-color` e respeitar terminais sem suporte a cor;
-- [x] usar códigos de saída documentados.
+### MC-G3.6 — Qualidade e entrega
 
-Legenda planejada:
+- [x] revisar código, imports, mensagens e documentação;
+- [x] executar a suíte automatizada completa;
+- [x] manter testes de rede independentes da Internet;
+- [x] documentar instalação, uso, arquitetura e limitações;
+- [x] atualizar a versão para 1.0.0.
 
-| Estado | Cor | Significado |
-| --- | --- | --- |
-| `SUCCESS` | verde | verificação concluída com sucesso |
-| `WARNING` | amarelo | resposta disponível, mas inesperada ou parcial |
-| `ERROR` | vermelho | verificação falhou |
-| `INFO` | azul/ciano | informação neutra |
-| `SKIPPED` | cinza | verificação não executada |
+## Critérios do MVP
 
-### 6. Qualidade e entrega
+- [x] Python 3.10 ou superior;
+- [x] nenhuma dependência externa em tempo de execução;
+- [x] falhas esperadas apresentadas sem traceback;
+- [x] código de saída adequado para automação;
+- [x] lógica de rede separada da apresentação;
+- [x] cobertura automatizada dos fluxos principais.
 
-- cobrir os casos principais com testes automatizados;
-- simular rede nos testes sempre que possível;
-- documentar instalação, exemplos e limitações;
-- verificar execução em Python 3.10 ou superior.
+## Evolução futura — fora da versão 1.0.0
 
-## Possível Etapa 2 — Interface web local
+Os itens abaixo são possibilidades, não compromissos nem requisitos do MVP:
 
-Esta etapa é uma melhoria futura, não um requisito do MVP.
+- interface web local, com tecnologia ainda a decidir;
+- execução paralela e monitoramento periódico;
+- persistência e histórico;
+- exportação estruturada, incluindo JSON;
+- métodos HTTP adicionais, autenticação e cabeçalhos personalizados;
+- novas verificações de rede;
+- empacotamento adicional ou automação de entrega.
 
-- escolher entre biblioteca padrão e um microframework;
-- criar formulário para host, portas, URL e timeout;
-- reutilizar integralmente o núcleo da Etapa 1;
-- apresentar cartões e legenda com os mesmos estados;
-- escutar apenas em `127.0.0.1` por padrão;
-- avaliar cuidados de segurança antes de permitir acesso pela rede.
+Qualquer evolução deverá reutilizar os contratos e as verificações existentes
+sem acoplar o núcleo a uma interface específica.
 
-## Fora do escopo atual
+## Fora do escopo do MVP entregue
 
 - ping ICMP;
 - varredura de intervalos de portas;
-- execução periódica ou monitoramento contínuo;
-- banco de dados e histórico;
-- autenticação HTTP;
-- execução paralela;
-- exportação de relatórios;
-- interface web.
-
+- banco de dados;
+- API ou interface web;
+- Docker;
+- CI/CD;

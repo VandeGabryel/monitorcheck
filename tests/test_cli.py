@@ -54,7 +54,7 @@ class CliDnsIntegrationTests(unittest.TestCase):
             check_type=CheckType.DNS,
             target="example.com",
             status=ResultStatus.SUCCESS,
-            message="1 endereço(s) encontrado(s).",
+            message="1 endereço encontrado.",
             duration_ms=2.5,
             details={"addresses": ("192.0.2.1",)},
         )
@@ -96,7 +96,7 @@ class CliTcpIntegrationTests(unittest.TestCase):
             CheckType.DNS,
             "localhost",
             ResultStatus.SUCCESS,
-            "1 endereço(s) encontrado(s).",
+            "1 endereço encontrado.",
             1.0,
             {"addresses": ("127.0.0.1",)},
         )
@@ -142,7 +142,7 @@ class CliHttpIntegrationTests(unittest.TestCase):
             CheckType.DNS,
             "localhost",
             ResultStatus.SUCCESS,
-            "1 endereço(s) encontrado(s).",
+            "1 endereço encontrado.",
             1.0,
             {"addresses": ("127.0.0.1",)},
         )

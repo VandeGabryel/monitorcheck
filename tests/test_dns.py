@@ -30,6 +30,7 @@ class DnsResolutionTests(unittest.TestCase):
             result.details["addresses"],
             ("192.0.2.1", "192.0.2.2", "2001:db8::1", "2001:db8::2"),
         )
+        self.assertEqual(result.message, "4 endereços encontrados.")
         self.assertAlmostEqual(result.duration_ms, 25.0)
         getaddrinfo.assert_called_once_with(
             "example.com",

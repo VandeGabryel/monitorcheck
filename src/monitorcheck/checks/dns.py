@@ -70,11 +70,16 @@ def resolve_host(host: str) -> CheckResult:
         )
 
     count = len(addresses)
+    message = (
+        "1 endereço encontrado."
+        if count == 1
+        else f"{count} endereços encontrados."
+    )
     return CheckResult(
         check_type=CheckType.DNS,
         target=host,
         status=ResultStatus.SUCCESS,
-        message=f"{count} endereço(s) encontrado(s).",
+        message=message,
         duration_ms=duration_ms,
         details={"addresses": addresses},
     )
