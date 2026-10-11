@@ -22,3 +22,19 @@ def format_dns_result(result: CheckResult) -> str:
         lines.append(f"  Duração: {result.duration_ms:.2f} ms")
     return "\n".join(lines)
 
+
+def format_tcp_results(results: tuple[CheckResult, ...]) -> str:
+    """Formata resultados TCP sem constituir o relatório final."""
+
+    lines = ["TCP"]
+    for result in results:
+        if result.check_type is not CheckType.TCP:
+            raise ValueError("format_tcp_results aceita apenas resultados TCP")
+
+        port = result.details.get("port", "?")
+        line = f"  {port} [{result.status.name}] {result.message}"
+        if result.duration_ms is not None:
+            line += f" ({result.duration_ms:.2f} ms)"
+        lines.append(line)
+    return "\n".join(lines)
+

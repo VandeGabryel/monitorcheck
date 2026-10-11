@@ -6,7 +6,14 @@ import unittest
 from contextlib import redirect_stdout
 from unittest.mock import patch
 
-from monitorcheck.cli import main, parse_args, parse_host, parse_ports, parse_timeout, parse_url
+from monitorcheck.cli import (
+    main,
+    parse_args,
+    parse_host,
+    parse_ports,
+    parse_timeout,
+    parse_url,
+)
 from monitorcheck.models import CheckResult, CheckType, ResultStatus
 
 
@@ -75,6 +82,51 @@ class CliDnsIntegrationTests(unittest.TestCase):
             exit_code = main(["missing.invalid"])
 
         self.assertEqual(exit_code, 1)
+
+
+class CliTcpIntegrationTests(unittest.TestCase):
+    @patch("monitorcheck.cli.check_tcp_ports")
+    @patch("monitorcheck.cli.resolve_host")
+    def test_main_checks_explicit_ports_with_configured_timeout(
+        self, resolver, tcp_checker
+    ) -> None:
+        resolver.return_value = CheckResult(
+            CheckType.DNS,
+            "localhost",
+            ResultStatus.SUCCESS,
+            "1 endereço(s) encontrado(s).",
+            1.0,
+            {"addresses": ("127.0.0.1",)},
+        )
+        tcp_checker.return_value = (
+            CheckResult(
+                CheckType.TCP,
+                "localhost:8000",
+                ResultStatus.SUCCESS,
+                "Conexão estabelecida.",
+                2.0,
+                {"port": 8000, "outcome": "open"},
+            ),
+            CheckResult(
+                CheckType.TCP,
+                "localhost:8001",
+                ResultStatus.ERROR,
+                "Conexão recusada.",
+                3.0,
+                {"port": 8001, "outcome": "refused"},
+            ),
+        )
+        output = io.StringIO()
+
+        with redirect_stdout(output):
+            exit_code = main(
+                ["localhost", "--ports", "8000,8001", "--timeout", "0.5"]
+            )
+
+        self.assertEqual(exit_code, 1)
+        self.assertIn("8000 [SUCCESS]", output.getvalue())
+        self.assertIn("8001 [ERROR]", output.getvalue())
+        tcp_checker.assert_called_once_with("localhost", (8000, 8001), 0.5)
 
 
 class InputValidationTests(unittest.TestCase):

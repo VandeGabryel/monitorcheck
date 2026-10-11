@@ -21,10 +21,10 @@ produz um resultado de erro controlado.
 
 ### 3. Testes TCP
 
-- testar somente portas informadas pelo usuário;
-- aplicar timeout por tentativa;
-- distinguir porta aberta, conexão recusada, timeout e erro;
-- validar o intervalo de portas de 1 a 65535.
+- [x] testar somente portas informadas pelo usuário;
+- [x] aplicar timeout por tentativa;
+- [x] distinguir porta aberta, conexão recusada, timeout e erro;
+- [x] validar o intervalo de portas de 1 a 65535.
 
 Critério de conclusão: cada porta gera um resultado independente sem bloquear a
 execução indefinidamente.
