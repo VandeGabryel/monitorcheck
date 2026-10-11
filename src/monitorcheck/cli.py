@@ -10,6 +10,10 @@ from dataclasses import dataclass
 from typing import Sequence
 from urllib.parse import urlsplit
 
+from monitorcheck.checks.dns import resolve_host
+from monitorcheck.models import ResultStatus
+from monitorcheck.presenters.terminal import format_dns_result
+
 DEFAULT_TIMEOUT = 3.0
 _HOST_LABEL = re.compile(r"^[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?$")
 
@@ -176,15 +180,14 @@ def parse_args(argv: Sequence[str] | None = None) -> CliConfig:
 
 
 def main(argv: Sequence[str] | None = None) -> int:
-    """Valida a entrada sem iniciar verificações de rede neste gate."""
+    """Executa e apresenta somente a verificação DNS deste gate."""
 
     config = parse_args(argv)
-    print("Entrada válida. As verificações de rede ainda não foram implementadas.")
-    print(f"Host: {config.host}")
+    result = resolve_host(config.host)
+    print(format_dns_result(result))
     if config.ports:
-        print(f"Portas: {','.join(map(str, config.ports))}")
+        print("TCP ainda não implementado; --ports não foi executado.")
     if config.url:
-        print(f"URL: {config.url}")
-    print(f"Timeout: {config.timeout:g}s")
-    return 0
+        print("HTTP/HTTPS ainda não implementado; --url não foi executado.")
+    return 0 if result.status is ResultStatus.SUCCESS else 1
 

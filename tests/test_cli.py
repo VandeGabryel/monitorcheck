@@ -1,9 +1,13 @@
 """Testes do parsing e das validações da CLI."""
 
 import argparse
+import io
 import unittest
+from contextlib import redirect_stdout
+from unittest.mock import patch
 
-from monitorcheck.cli import parse_args, parse_host, parse_ports, parse_timeout, parse_url
+from monitorcheck.cli import main, parse_args, parse_host, parse_ports, parse_timeout, parse_url
+from monitorcheck.models import CheckResult, CheckType, ResultStatus
 
 
 class CliParsingTests(unittest.TestCase):
@@ -34,6 +38,43 @@ class CliParsingTests(unittest.TestCase):
         self.assertIsNone(config.url)
         self.assertEqual(config.timeout, 3.0)
         self.assertTrue(config.use_color)
+
+
+class CliDnsIntegrationTests(unittest.TestCase):
+    @patch("monitorcheck.cli.resolve_host")
+    def test_main_presents_dns_result_and_returns_success(self, resolver) -> None:
+        resolver.return_value = CheckResult(
+            check_type=CheckType.DNS,
+            target="example.com",
+            status=ResultStatus.SUCCESS,
+            message="1 endereço(s) encontrado(s).",
+            duration_ms=2.5,
+            details={"addresses": ("192.0.2.1",)},
+        )
+        output = io.StringIO()
+
+        with redirect_stdout(output):
+            exit_code = main(["example.com"])
+
+        self.assertEqual(exit_code, 0)
+        self.assertIn("DNS [SUCCESS] example.com", output.getvalue())
+        self.assertIn("192.0.2.1", output.getvalue())
+        resolver.assert_called_once_with("example.com")
+
+    @patch("monitorcheck.cli.resolve_host")
+    def test_main_returns_failure_for_dns_error(self, resolver) -> None:
+        resolver.return_value = CheckResult(
+            check_type=CheckType.DNS,
+            target="missing.invalid",
+            status=ResultStatus.ERROR,
+            message="Não foi possível resolver o host.",
+            duration_ms=1.0,
+        )
+
+        with redirect_stdout(io.StringIO()):
+            exit_code = main(["missing.invalid"])
+
+        self.assertEqual(exit_code, 1)
 
 
 class InputValidationTests(unittest.TestCase):

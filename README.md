@@ -3,8 +3,9 @@
 MonitorCheck é um mini-projeto acadêmico para executar verificações básicas de
 conectividade de hosts e serviços.
 
-O projeto está no Gate 3.1. Os contratos de resultado e a validação da CLI
-estão disponíveis, mas as verificações de rede ainda não foram implementadas.
+O projeto concluiu o Gate MC-G3.2. Os contratos, a validação da CLI e a
+resolução DNS estão disponíveis; as demais verificações ainda não foram
+implementadas.
 
 ## Objetivo da Etapa 1
 
@@ -26,8 +27,8 @@ python -m pip install -e .
 python -m monitorcheck example.com --ports 80,443 --url https://example.com
 ```
 
-Neste gate, uma entrada válida é apenas resumida no terminal. Nenhuma consulta
-de rede é executada.
+Neste gate, a CLI executa somente a resolução DNS. As opções de TCP e HTTP são
+validadas, mas ainda não iniciam essas verificações.
 
 ## Estrutura
 
@@ -60,7 +61,7 @@ docs/
 - [x] Estrutura do projeto criada.
 - [x] Contratos dos resultados definidos em código.
 - [x] Parsing e validação básica da CLI implementados.
-- [ ] Resolução DNS implementada.
+- [x] Resolução DNS implementada.
 - [ ] Testes TCP implementados.
 - [ ] Testes HTTP/HTTPS implementados.
 - [ ] Relatório de terminal implementado.

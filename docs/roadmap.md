@@ -11,10 +11,10 @@
 
 ### 2. Resolução DNS
 
-- resolver IPv4 e IPv6 com `socket`;
-- remover endereços duplicados;
-- tratar host inexistente e falhas do resolvedor;
-- registrar duração e mensagem objetiva.
+- [x] resolver IPv4 e IPv6 com `socket`;
+- [x] remover endereços duplicados;
+- [x] tratar host inexistente e falhas do resolvedor;
+- [x] registrar duração e mensagem objetiva.
 
 Critério de conclusão: host válido produz uma lista de endereços e host inválido
 produz um resultado de erro controlado.
