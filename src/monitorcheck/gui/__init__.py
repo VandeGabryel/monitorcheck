@@ -1,4 +1,4 @@
-"""Interface gráfica local do MonitorCheck, em desenvolvimento."""
+"""Interface gráfica local do MonitorCheck."""
 
 from .app import MonitorCheckApp, create_application, main
 

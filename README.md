@@ -1,36 +1,44 @@
 # MonitorCheck
 
-MonitorCheck é uma aplicação CLI acadêmica, escrita em Python, para verificações
-básicas de conectividade de hosts e serviços. O MVP utiliza somente a biblioteca
-padrão em tempo de execução e apresenta os resultados diretamente no terminal.
+MonitorCheck é uma aplicação acadêmica em Python para verificações básicas de
+conectividade de hosts e serviços. O projeto oferece uma CLI e uma GUI local em
+Tkinter, ambas apoiadas pelas mesmas validações, orquestração e verificações de
+DNS, TCP e HTTP/HTTPS.
 
 > Use o MonitorCheck apenas em hosts e serviços próprios ou para os quais exista
 > autorização de teste.
 
 ## Objetivo
 
-O projeto reúne, em um fluxo simples e legível, verificações de DNS, portas TCP
-e endpoints HTTP/HTTPS. Cada operação gera um resultado estruturado, e a camada
-de apresentação consolida esses resultados em um relatório com resumo final.
+Reunir verificações simples de conectividade em uma aplicação pequena, legível
+e sem dependências externas em tempo de execução. Cada operação produz um
+`CheckResult` estruturado, independente da interface que o apresenta.
 
 ## Funcionalidades
 
-- resolução DNS com endereços IPv4 e IPv6;
+- resolução DNS de endereços IPv4 e IPv6;
 - remoção de endereços DNS duplicados em ordem determinística;
-- teste sequencial de portas TCP explicitamente informadas;
-- distinção entre porta aberta, conexão recusada, timeout e erro de socket;
-- requisição HTTP/HTTPS com método GET;
-- acompanhamento da URL final após redirecionamentos;
-- tratamento controlado de erro HTTP, timeout, falha de rede e erro TLS;
-- medição individual da duração das verificações;
-- relatório consolidado com resumo e códigos de saída;
-- cores ANSI opcionais, sem depender delas para comunicar o resultado.
+- testes sequenciais das portas TCP explicitamente informadas;
+- distinção entre conexão bem-sucedida, recusada, timeout e erro de socket;
+- requisição HTTP/HTTPS GET com validação TLS padrão;
+- registro de código HTTP e URL final após redirecionamentos;
+- tratamento controlado de erros HTTP, rede, timeout e TLS;
+- duração individual das verificações;
+- relatório da CLI com resumo, legenda, cores opcionais e códigos de saída;
+- GUI responsiva com resultados separados para DNS, TCP, HTTP/HTTPS e resumo;
+- execução das operações de rede fora da thread principal do Tkinter;
+- temas Claro e Escuro, com troca imediata e tema Escuro inicial;
+- validação compartilhada entre CLI e GUI.
 
 ## Requisitos
 
 - Python 3.10 ou superior;
-- `pip` e `setuptools` para instalação do pacote;
+- `pip` e `setuptools` para instalação editável;
+- suporte ao Tkinter para utilizar a GUI;
 - nenhuma dependência externa em tempo de execução.
+
+O Tkinter normalmente acompanha o Python no Windows e no macOS. Algumas
+distribuições Linux o disponibilizam em um pacote separado do sistema.
 
 ## Instalação
 
@@ -50,37 +58,37 @@ source .venv/bin/activate
 python -m pip install -e .
 ```
 
-A instalação editável cria o comando monitorcheck.
-Caso o diretório de scripts do Python não esteja disponível no PATH,
- utilize python -m monitorcheck, que executa o mesmo entrypoint.
-## Uso
+A instalação editável cria o comando `monitorcheck`. Caso o diretório de
+scripts do Python não esteja no `PATH`, utilize `python -m monitorcheck`.
+
+## Execução pela CLI
 
 ```text
 monitorcheck HOST [--ports PORTA,...] [--url URL] [--timeout SEGUNDOS] [--no-color]
 ```
 
-Equivalente pelo módulo Python:
+Forma equivalente:
 
 ```text
 python -m monitorcheck HOST [opções]
 ```
 
-### Parâmetros da CLI
+### Parâmetros
 
 | Parâmetro | Obrigatório | Descrição |
 | --- | --- | --- |
-| `HOST` | sim | Nome de host, endereço IPv4 ou endereço IPv6 usado no DNS e nos testes TCP. |
-| `--ports PORTA,...` | não | Portas TCP explícitas, separadas por vírgulas. Valores válidos: 1 a 65535. |
+| `HOST` | sim | Nome de host, IPv4 ou IPv6 usado no DNS e nos testes TCP. |
+| `--ports PORTA,...` | não | Portas TCP explícitas entre 1 e 65535, separadas por vírgulas. |
 | `--url URL` | não | URL completa com esquema `http` ou `https`. |
-| `--timeout SEGUNDOS` | não | Timeout positivo e finito para cada teste TCP e para a operação HTTP. Padrão: `3`. |
-| `--no-color` | não | Desativa completamente as sequências ANSI. |
+| `--timeout SEGUNDOS` | não | Timeout positivo e finito para cada TCP e para HTTP. Padrão: `3`. |
+| `--no-color` | não | Remove completamente as sequências ANSI da saída. |
 | `-h`, `--help` | não | Exibe a ajuda da CLI. |
 
-Portas repetidas são deduplicadas, preservando a primeira ocorrência. O host
-principal sempre passa pela verificação DNS. TCP e HTTP/HTTPS só são executados
-quando `--ports` e `--url`, respectivamente, forem fornecidos.
+Portas repetidas são deduplicadas, preservando a primeira ocorrência. DNS é
+sempre executado. TCP e HTTP/HTTPS só são executados quando `--ports` e `--url`
+são fornecidos, respectivamente.
 
-## Exemplos
+### Exemplos
 
 Somente DNS:
 
@@ -88,13 +96,13 @@ Somente DNS:
 monitorcheck example.com
 ```
 
-DNS e portas TCP:
+DNS e TCP:
 
 ```powershell
 monitorcheck example.com --ports 80,443 --timeout 2
 ```
 
-Todas as verificações:
+DNS, TCP e HTTPS:
 
 ```powershell
 monitorcheck example.com --ports 80,443 --url https://example.com --timeout 3
@@ -106,25 +114,63 @@ Teste local sem cores:
 monitorcheck 127.0.0.1 --ports 8000 --url http://127.0.0.1:8000 --no-color
 ```
 
-## Relatório e status
+## Execução da GUI
 
-O relatório apresenta cabeçalho, alvo, timeout, seções para as verificações
-solicitadas, durações, detalhes relevantes e um resumo. Os rótulos permanecem
-visíveis mesmo quando as cores estão desativadas.
+```powershell
+python -m monitorcheck.gui
+```
 
-| Status | Cor | Interpretação |
-| --- | --- | --- |
-| `SUCCESS` | verde | Verificação concluída com sucesso. |
-| `WARNING` | amarelo | Resposta disponível, mas inesperada ou parcial. |
-| `ERROR` | vermelho | Verificação falhou. |
-| `INFO` | ciano | Informação neutra. |
-| `SKIPPED` | cinza | Verificação não executada. |
+A janela permite informar Host, Portas TCP, URL e Timeout. Durante uma
+verificação, os campos e botões conflitantes ficam desabilitados, enquanto o
+seletor de tema permanece disponível. Ao final, os controles são restaurados e
+as seções apresentam os resultados estruturados.
 
-As cores são usadas somente em terminais interativos compatíveis. `--no-color`,
-a variável de ambiente `NO_COLOR`, `TERM=dumb` e saída redirecionada desativam
-ANSI.
+O botão `Limpar resultados` restaura os painéis sem apagar a configuração. TCP
+ou HTTP não solicitados aparecem como `SKIPPED`/não solicitados e não são
+contabilizados como falha.
 
-## Códigos de saída
+## Funcionamento das verificações
+
+### DNS
+
+Usa `socket.getaddrinfo` para consultar IPv4 e IPv6. Endereços duplicados são
+removidos e as falhas do resolvedor são convertidas em resultado controlado. O
+timeout configurado não substitui o timeout do resolvedor do sistema.
+
+### TCP
+
+Usa `socket.create_connection` para tentar uma conexão independente com cada
+porta fornecida. As tentativas são sequenciais e utilizam o timeout configurado.
+Não há varredura automática nem interpretação do protocolo da aplicação.
+
+### HTTP/HTTPS
+
+Usa `urllib.request` para executar GET sem consumir ou armazenar o corpo da
+resposta. A verificação registra código HTTP, URL final e duração. HTTPS mantém
+a validação padrão de certificados; certificados inválidos não são aceitos.
+
+## Status e apresentação
+
+| Status | Significado |
+| --- | --- |
+| `SUCCESS` | Verificação concluída com sucesso. |
+| `WARNING` | Resposta disponível, mas inesperada ou parcial. |
+| `ERROR` | Verificação falhou. |
+| `INFO` | Informação neutra ou operação em andamento. |
+| `SKIPPED` | Verificação não solicitada ou não executada. |
+
+As cores são complementares: os rótulos textuais permanecem visíveis na CLI e
+na GUI. Na CLI, `--no-color`, `NO_COLOR`, `TERM=dumb` ou saída não interativa
+desativam ANSI.
+
+## Temas da GUI
+
+A GUI inicia no tema Escuro e oferece um seletor no cabeçalho para alternar
+entre Escuro e Claro. A troca atualiza os widgets existentes sem limpar campos,
+resultados ou uma execução em andamento. A escolha não é persistida após o
+encerramento da aplicação.
+
+## Códigos de saída da CLI
 
 | Código | Significado |
 | --- | --- |
@@ -134,14 +180,16 @@ ANSI.
 
 ## Testes
 
-A suíte usa `unittest` e mocks para evitar dependência de Internet ou serviços
-externos:
+A suíte utiliza `unittest` e mocks. Os testes automatizados não dependem de
+Internet, serviços externos ou display gráfico real.
 
 ```powershell
+python -m compileall -q src tests
 python -m unittest discover -s tests -v
+python -m pip check
 ```
 
-Sem instalar o pacote, defina `PYTHONPATH` antes da execução:
+Sem instalar o pacote:
 
 ```powershell
 $env:PYTHONPATH="src"
@@ -151,63 +199,51 @@ py -3 -m unittest discover -s tests -v
 ## Arquitetura resumida
 
 ```text
-CLI ──┐
-      ├── validação compartilhada ── runner ── checks
-GUI ──┘                                  │
-                                        └── CheckResult
+CLI ─┐
+     ├─> validation.py
+GUI ─┘
+         |
+         v
+      runner.py
+         |
+         +--> DNS
+         +--> TCP
+         +--> HTTP/HTTPS
+         |
+         v
+      CheckResult
 ```
 
-- `cli.py`: parsing dos argumentos e apresentação pela CLI;
-- `validation.py`: regras de validação compartilhadas pelas interfaces;
-- `runner.py`: orquestração neutra das verificações solicitadas;
+- `cli.py`: argumentos, adaptação dos erros para `argparse` e relatório;
+- `gui/`: interface Tkinter, temas e coordenação da thread de trabalho;
+- `validation.py`: validação sintática compartilhada;
+- `runner.py`: orquestração independente das interfaces;
 - `models.py`: contratos compartilhados;
-- `checks/`: lógica independente de DNS, TCP e HTTP/HTTPS;
-- `presenters/terminal.py`: consolidação, cores e resumo;
-- `gui/`: apresentação gráfica local em desenvolvimento;
-- `tests/`: testes unitários e de integração da CLI.
+- `checks/`: lógica de DNS, TCP e HTTP/HTTPS;
+- `presenters/terminal.py`: relatório, resumo e cores da CLI;
+- `tests/`: testes unitários e de integração sem Internet real.
 
-Detalhes adicionais estão em [docs/architecture.md](docs/architecture.md). O
-histórico dos gates e as possibilidades futuras estão em
-[docs/roadmap.md](docs/roadmap.md).
-
-## Interface gráfica em desenvolvimento
-
-A Etapa 2 adiciona uma camada gráfica local com `tkinter` e `ttk`. No Gate
-GUI-G2, a janela reutiliza as mesmas validações e verificações da CLI por meio
-de uma camada neutra de orquestração. As operações de rede são executadas em
-uma thread de trabalho para que a janela continue responsiva, e o resultado é
-entregue à thread principal antes da atualização dos widgets.
-
-A estrutura visual pode ser aberta manualmente com:
-
-```powershell
-python -m monitorcheck.gui
-```
-
-A instalação do Python precisa incluir suporte ao Tk. Em algumas distribuições
-Linux, esse suporte é fornecido por um pacote do próprio sistema operacional.
-
-A CLI 1.0.0 continua homologada e com os mesmos argumentos, relatório e códigos
-de saída. A integração funcional básica da GUI está disponível, mas seu
-refinamento visual e de experiência permanece para gates posteriores.
+Mais detalhes estão em [docs/architecture.md](docs/architecture.md). O histórico
+de implementação está em [docs/roadmap.md](docs/roadmap.md).
 
 ## Limitações conhecidas
 
-- a resolução DNS usa o timeout do resolvedor do sistema operacional;
-- as verificações são sequenciais;
-- não há varredura de intervalos: somente portas explícitas são aceitas;
-- um teste TCP confirma apenas o estabelecimento da conexão, não o protocolo;
-- o timeout HTTP limita operações bloqueantes, mas não é um prazo global rígido
-  para toda uma cadeia de redirecionamentos;
-- HTTP/HTTPS suporta apenas GET, sem autenticação, corpo, download ou cabeçalhos
-  personalizados;
-- HTTPS usa a validação TLS padrão e rejeita certificados inválidos;
-- não há persistência, histórico, exportação, monitoramento contínuo ou interface
-  web;
-- o suporte visual a ANSI depende do terminal; a informação textual é sempre
-  preservada.
+- a resolução DNS depende do timeout do sistema operacional;
+- TCP e HTTP são executados sequencialmente;
+- somente portas explícitas são aceitas, sem intervalos ou descoberta;
+- TCP confirma apenas o estabelecimento da conexão;
+- o timeout HTTP não é um prazo global rígido para uma cadeia de redirecionamentos;
+- HTTP/HTTPS suporta somente GET, sem autenticação ou cabeçalhos personalizados;
+- não há ping ICMP, persistência, histórico, exportação ou monitoramento contínuo;
+- não há banco de dados, API, interface web, Docker ou CI/CD;
+- a aparência exata dos widgets pode variar conforme o Tk disponível no sistema.
 
-## Estado do projeto
+## Escopo entregue
 
-O MVP funcional está concluído na versão 1.0.0. A publicação do repositório,
-criação da tag e da release são etapas de distribuição posteriores à homologação do código.
+O projeto entrega CLI e GUI locais para DNS, TCP e HTTP/HTTPS, contratos e
+validações compartilhados, relatório no terminal, resumo gráfico, execução
+assíncrona da GUI e temas Claro/Escuro. A versão declarada atualmente é
+`1.0.0`.
+
+Commit, tag, release e publicação são etapas separadas e não são executadas
+automaticamente pelo projeto.
