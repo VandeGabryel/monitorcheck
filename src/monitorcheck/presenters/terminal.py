@@ -38,3 +38,21 @@ def format_tcp_results(results: tuple[CheckResult, ...]) -> str:
         lines.append(line)
     return "\n".join(lines)
 
+
+def format_http_result(result: CheckResult) -> str:
+    """Formata somente o resultado HTTP; não constitui o relatório final."""
+
+    if result.check_type is not CheckType.HTTP:
+        raise ValueError("format_http_result aceita apenas resultados HTTP")
+
+    lines = [
+        f"HTTP [{result.status.name}] {result.target}",
+        f"  {result.message}",
+    ]
+    final_url = result.details.get("final_url")
+    if final_url and final_url != result.target:
+        lines.append(f"  URL final: {final_url}")
+    if result.duration_ms is not None:
+        lines.append(f"  Duração: {result.duration_ms:.2f} ms")
+    return "\n".join(lines)
+

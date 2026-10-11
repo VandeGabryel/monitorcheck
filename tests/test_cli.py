@@ -129,6 +129,52 @@ class CliTcpIntegrationTests(unittest.TestCase):
         tcp_checker.assert_called_once_with("localhost", (8000, 8001), 0.5)
 
 
+class CliHttpIntegrationTests(unittest.TestCase):
+    @patch("monitorcheck.cli.check_http")
+    @patch("monitorcheck.cli.resolve_host")
+    def test_main_checks_explicit_url_with_configured_timeout(
+        self, resolver, http_checker
+    ) -> None:
+        resolver.return_value = CheckResult(
+            CheckType.DNS,
+            "localhost",
+            ResultStatus.SUCCESS,
+            "1 endereço(s) encontrado(s).",
+            1.0,
+            {"addresses": ("127.0.0.1",)},
+        )
+        http_checker.return_value = CheckResult(
+            CheckType.HTTP,
+            "http://localhost:8000/start",
+            ResultStatus.SUCCESS,
+            "Resposta HTTP recebida: 200.",
+            4.0,
+            {
+                "requested_url": "http://localhost:8000/start",
+                "final_url": "http://localhost:8000/final",
+                "status_code": 200,
+                "outcome": "response",
+            },
+        )
+        output = io.StringIO()
+
+        with redirect_stdout(output):
+            exit_code = main(
+                [
+                    "localhost",
+                    "--url",
+                    "http://localhost:8000/start",
+                    "--timeout",
+                    "0.75",
+                ]
+            )
+
+        self.assertEqual(exit_code, 0)
+        self.assertIn("HTTP [SUCCESS]", output.getvalue())
+        self.assertIn("URL final: http://localhost:8000/final", output.getvalue())
+        http_checker.assert_called_once_with("http://localhost:8000/start", 0.75)
+
+
 class InputValidationTests(unittest.TestCase):
     def test_accepts_hostname_ipv4_and_ipv6(self) -> None:
         for host in ("example.com", "127.0.0.1", "::1", "localhost"):

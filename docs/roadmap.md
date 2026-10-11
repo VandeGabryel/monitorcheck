@@ -31,10 +31,10 @@ execução indefinidamente.
 
 ### 4. Testes HTTP/HTTPS
 
-- aceitar URL completa com esquema `http` ou `https`;
-- executar uma requisição `GET`;
-- registrar código, URL final e duração;
-- tratar erros HTTP, conexão, timeout e TLS.
+- [x] aceitar URL completa com esquema `http` ou `https`;
+- [x] executar uma requisição `GET`;
+- [x] registrar código, URL final e duração;
+- [x] tratar erros HTTP, conexão, timeout e TLS.
 
 Critério de conclusão: respostas e falhas comuns aparecem como resultados
 controlados, sem traceback.

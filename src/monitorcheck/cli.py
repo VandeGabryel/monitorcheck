@@ -11,9 +11,14 @@ from typing import Sequence
 from urllib.parse import urlsplit
 
 from monitorcheck.checks.dns import resolve_host
+from monitorcheck.checks.http import check_http
 from monitorcheck.checks.tcp import check_tcp_ports
 from monitorcheck.models import ResultStatus
-from monitorcheck.presenters.terminal import format_dns_result, format_tcp_results
+from monitorcheck.presenters.terminal import (
+    format_dns_result,
+    format_http_result,
+    format_tcp_results,
+)
 
 DEFAULT_TIMEOUT = 3.0
 _HOST_LABEL = re.compile(r"^[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?$")
@@ -181,7 +186,7 @@ def parse_args(argv: Sequence[str] | None = None) -> CliConfig:
 
 
 def main(argv: Sequence[str] | None = None) -> int:
-    """Executa e apresenta as verificações DNS e TCP disponíveis."""
+    """Executa e apresenta as verificações disponíveis da Etapa 1."""
 
     config = parse_args(argv)
     dns_result = resolve_host(config.host)
@@ -191,9 +196,13 @@ def main(argv: Sequence[str] | None = None) -> int:
     if config.ports:
         tcp_results = check_tcp_ports(config.host, config.ports, config.timeout)
         print(format_tcp_results(tcp_results))
-    if config.url:
-        print("HTTP/HTTPS ainda não implementado; --url não foi executado.")
 
-    results = (dns_result, *tcp_results)
+    http_results = ()
+    if config.url:
+        http_result = check_http(config.url, config.timeout)
+        http_results = (http_result,)
+        print(format_http_result(http_result))
+
+    results = (dns_result, *tcp_results, *http_results)
     return 0 if all(result.status is ResultStatus.SUCCESS for result in results) else 1
 
