@@ -13,11 +13,10 @@ from urllib.parse import urlsplit
 from monitorcheck.checks.dns import resolve_host
 from monitorcheck.checks.http import check_http
 from monitorcheck.checks.tcp import check_tcp_ports
-from monitorcheck.models import ResultStatus
 from monitorcheck.presenters.terminal import (
-    format_dns_result,
-    format_http_result,
-    format_tcp_results,
+    format_report,
+    summarize_results,
+    supports_color,
 )
 
 DEFAULT_TIMEOUT = 3.0
@@ -167,7 +166,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--no-color",
         action="store_true",
-        help="desativa cores na saída futura",
+        help="desativa cores na saída",
     )
     return parser
 
@@ -186,23 +185,32 @@ def parse_args(argv: Sequence[str] | None = None) -> CliConfig:
 
 
 def main(argv: Sequence[str] | None = None) -> int:
-    """Executa e apresenta as verificações disponíveis da Etapa 1."""
+    """Executa as verificações solicitadas e apresenta o relatório final."""
 
     config = parse_args(argv)
     dns_result = resolve_host(config.host)
-    print(format_dns_result(dns_result))
 
     tcp_results = ()
     if config.ports:
         tcp_results = check_tcp_ports(config.host, config.ports, config.timeout)
-        print(format_tcp_results(tcp_results))
 
-    http_results = ()
+    http_result = None
     if config.url:
         http_result = check_http(config.url, config.timeout)
-        http_results = (http_result,)
-        print(format_http_result(http_result))
 
-    results = (dns_result, *tcp_results, *http_results)
-    return 0 if all(result.status is ResultStatus.SUCCESS for result in results) else 1
+    print(
+        format_report(
+            target=config.host,
+            timeout=config.timeout,
+            dns_result=dns_result,
+            tcp_results=tcp_results,
+            http_result=http_result,
+            use_color=config.use_color and supports_color(),
+        )
+    )
+
+    results = [dns_result, *tcp_results]
+    if http_result is not None:
+        results.append(http_result)
+    return 1 if summarize_results(results).failures else 0
 

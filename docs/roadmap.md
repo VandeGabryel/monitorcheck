@@ -41,11 +41,11 @@ controlados, sem traceback.
 
 ### 5. Relatório no terminal
 
-- exibir seções para DNS, TCP e HTTP;
-- apresentar estado, duração, mensagem e resumo final;
-- adicionar cores opcionais e uma legenda;
-- oferecer `--no-color` e respeitar terminais sem suporte a cor;
-- usar códigos de saída documentados.
+- [x] exibir seções para DNS, TCP e HTTP;
+- [x] apresentar estado, duração, mensagem e resumo final;
+- [x] adicionar cores opcionais e uma legenda;
+- [x] oferecer `--no-color` e respeitar terminais sem suporte a cor;
+- [x] usar códigos de saída documentados.
 
 Legenda planejada:
 

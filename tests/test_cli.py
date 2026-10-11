@@ -64,8 +64,10 @@ class CliDnsIntegrationTests(unittest.TestCase):
             exit_code = main(["example.com"])
 
         self.assertEqual(exit_code, 0)
-        self.assertIn("DNS [SUCCESS] example.com", output.getvalue())
+        self.assertIn("=== MonitorCheck ===", output.getvalue())
+        self.assertIn("Status: [SUCCESS]", output.getvalue())
         self.assertIn("192.0.2.1", output.getvalue())
+        self.assertIn("Resultado geral: [SUCCESS]", output.getvalue())
         resolver.assert_called_once_with("example.com")
 
     @patch("monitorcheck.cli.resolve_host")
@@ -124,8 +126,9 @@ class CliTcpIntegrationTests(unittest.TestCase):
             )
 
         self.assertEqual(exit_code, 1)
-        self.assertIn("8000 [SUCCESS]", output.getvalue())
-        self.assertIn("8001 [ERROR]", output.getvalue())
+        self.assertIn("Porta 8000 [SUCCESS]", output.getvalue())
+        self.assertIn("Porta 8001 [ERROR]", output.getvalue())
+        self.assertIn("Falhas: 1", output.getvalue())
         tcp_checker.assert_called_once_with("localhost", (8000, 8001), 0.5)
 
 
@@ -146,13 +149,13 @@ class CliHttpIntegrationTests(unittest.TestCase):
         http_checker.return_value = CheckResult(
             CheckType.HTTP,
             "http://localhost:8000/start",
-            ResultStatus.SUCCESS,
-            "Resposta HTTP recebida: 200.",
+            ResultStatus.WARNING,
+            "Resposta HTTP recebida sem código de status.",
             4.0,
             {
                 "requested_url": "http://localhost:8000/start",
                 "final_url": "http://localhost:8000/final",
-                "status_code": 200,
+                "status_code": None,
                 "outcome": "response",
             },
         )
@@ -170,9 +173,30 @@ class CliHttpIntegrationTests(unittest.TestCase):
             )
 
         self.assertEqual(exit_code, 0)
-        self.assertIn("HTTP [SUCCESS]", output.getvalue())
+        self.assertIn("HTTP/HTTPS", output.getvalue())
+        self.assertIn("Status: [WARNING]", output.getvalue())
+        self.assertIn("Resultado geral: [WARNING]", output.getvalue())
         self.assertIn("URL final: http://localhost:8000/final", output.getvalue())
         http_checker.assert_called_once_with("http://localhost:8000/start", 0.75)
+
+    @patch("monitorcheck.cli.supports_color", return_value=True)
+    @patch("monitorcheck.cli.resolve_host")
+    def test_no_color_never_emits_ansi(self, resolver, _supports_color) -> None:
+        resolver.return_value = CheckResult(
+            CheckType.DNS,
+            "localhost",
+            ResultStatus.SUCCESS,
+            "Resolvido.",
+            1.0,
+            {"addresses": ("127.0.0.1",)},
+        )
+        output = io.StringIO()
+
+        with redirect_stdout(output):
+            exit_code = main(["localhost", "--no-color"])
+
+        self.assertEqual(exit_code, 0)
+        self.assertNotIn("\033[", output.getvalue())
 
 
 class InputValidationTests(unittest.TestCase):
