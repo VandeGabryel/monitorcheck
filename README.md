@@ -8,6 +8,16 @@ DNS, TCP e HTTP/HTTPS.
 > Use o MonitorCheck apenas em hosts e serviços próprios ou para os quais exista
 > autorização de teste.
 
+## Demonstração
+
+### Interface gráfica
+
+O MonitorCheck possui uma interface gráfica local desenvolvida em Tkinter,
+com temas Claro e Escuro e apresentação independente dos resultados de
+DNS, portas TCP e HTTP/HTTPS.
+
+![MonitorCheck - Interface gráfica em tema escuro](docs/images/monitorcheck-gui-dark.png)
+
 ## Objetivo
 
 Reunir verificações simples de conectividade em uma aplicação pequena, legível
@@ -60,6 +70,14 @@ python -m pip install -e .
 
 A instalação editável cria o comando `monitorcheck`. Caso o diretório de
 scripts do Python não esteja no `PATH`, utilize `python -m monitorcheck`.
+
+### Instalação e execução
+
+O projeto pode ser instalado localmente em um ambiente virtual Python.
+Após a instalação editável, tanto a CLI quanto a interface gráfica ficam
+disponíveis para execução.
+
+![MonitorCheck - Instalação e execução no Windows](docs/images/monitorcheck-install-windows.png)
 
 ## Execução pela CLI
 
